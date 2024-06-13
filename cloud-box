@@ -12,20 +12,21 @@ show_banner() {
 	echo "              Welcome to Cloud-Box utility              "
 }
 
-show_usage() {
-	echo "             Usage: cloud-box [option] [file]               "
-	echo "Options: "
-	echo "   -u,  --upload        Upload a file"
-	echo "   -d,  --download      Download a file"
-	echo "   -r,  --remove        Remove a file"
-}
+#show_usage() {
+#	echo "             Usage: cloud-box [option] [file]               "
+#	echo "Options: "
+#	echo "   -u,  --upload        Upload a file"
+#	echo "   -d,  --download      Download a file"
+#	echo "   -r,  --remove        Remove a file"
+#}
 
 show_instructions() {
 	echo "Operations:"
-	echo "    list        List all files in your space"
-	echo "    upload       Upload file/s"
-	echo "    download     Download file/s"
-	echo "    delete       Delete file/s"
+	echo "    list               List all files in your space"
+	echo "    upload <file>      Upload a file to your space"
+	echo "    download <file>    Download a file from your space"
+	echo "    delete <file>      Delete a file from your space"
+	echo "    exit               Exit the program"
 }
 
 get_user() {
@@ -65,58 +66,66 @@ upload_file() {
 #}
 
 delete_file() {
-  local out
-  out=$(aws s3 rm "$BUCKET/$FILE")
-  echo "$out"
-  if [ $? -ne 0 ]
-  then
-    echo "Operation failed"
-  else
-    echo "$FILE was successfully deleted"
+
+  local out list flag=false
+  list=$(list_objects | sed '$d' | awk '{print $4}')
+  echo "$list" | while IFS= read -r line
+  do
+    if [ "$line" = "$FILE" ]
+    then
+      aws s3 rm "$BUCKET$FILE"
+      echo "$FILE was successfully deleted"
+      flag=true
+      break
+    fi
+  done
+  if ! $flag;then
+    echo "File not found"
   fi
 }
 
 
 main() {
+  get_user
+  show_banner
+  while true; do
+    INPUT=''
+    FILE=''
+    show_instructions
+    read -r INPUT FILE
+    echo "$INPUT"
+    echo "$FILE"
 
-	read -r INPUT FILE
-	echo "$INPUT"
-	echo "$FILE"
-
-	if [ "$INPUT" = "list" ]
-	then
-		echo "Here is the list"
-		list_objects
-		show_instructions
-		main
-	elif [ "$INPUT" = "upload" ]
-	then
-	  if [ -z "$FILE" ]
-	  then
-	    echo "No file specified"
-	  else
-		  echo "Uploading $FILE"
-		  upload_file "$FILE"
-		fi
-	elif [ "$INPUT" = "download" ]
-	then
-		echo "Downloading $FILE"
-		download_file "$FILE"
-	elif [ "$INPUT" = "delete" ]
-	then
-		echo "Deleting $FILE"
-		delete_file "$FILE"
-	else
-		echo "Invalid option. Please try again."
-		echo ""
-		show_instructions
-		main
-	fi
-
+    if [ "$INPUT" = "list" ]
+    then
+      echo "Files:"
+      list_objects
+    elif [ "$INPUT" = "upload" ]
+    then
+      if [ -z "$FILE" ]
+      then
+        echo "No file specified"
+      else
+        echo "Uploading $FILE"
+        upload_file "$FILE"
+      fi
+    elif [ "$INPUT" = "download" ]
+    then
+      echo "Downloading $FILE"
+      download_file "$FILE"
+    elif [ "$INPUT" = "delete" ]
+    then
+      echo "Deleting $FILE"
+      delete_file "$FILE"
+    elif [ "$INPUT" = "exit" ]
+    then
+      exit 0
+    else
+      echo "Invalid option. Please try again."
+      echo ""
+    fi
+  done
 
 }
 
-show_banner
-show_instructions
-get_user
 main
