@@ -1,0 +1,122 @@
+#!/bin/bash
+
+show_banner() {
+	echo "  _____   __                __        ___            "
+	echo " / ___/  / / ___  __ __ ___/ / ____  / _ ) ___  __ __"
+	echo "/ /__   / / / _ \/ // // _  / /___/ / _  |/ _ \ \ \ /"
+	echo "\___/  /_/  \___/\_,_/ \_,_/       /____/ \___//_\_\ "
+	echo "                                                     "
+	echo "                                                     "
+	echo "*******************************************************"
+	echo "                                                     "
+	echo "              Welcome to Cloud-Box utility              "
+}
+
+show_usage() {
+	echo "             Usage: cloud-box [option] [file]               "
+	echo "Options: "
+	echo "   -u,  --upload        Upload a file"
+	echo "   -d,  --download      Download a file"
+	echo "   -r,  --remove        Remove a file"
+}
+
+show_instructions() {
+	echo "Operations:"
+	echo "    list        List all files in your space"
+	echo "    upload       Upload file/s"
+	echo "    download     Download file/s"
+	echo "    delete       Delete file/s"
+}
+
+get_user() {
+  local arn
+	arn=$(aws sts get-caller-identity --query "Arn" --output text)
+	 if [ $? -ne 0 ]; then
+		echo "Failed to retrieve AWS user information."
+		exit 1
+    fi
+	USER=$(echo "$arn" | awk -F'/' '{print $NF}')
+	BUCKET="s3://cloud-storage-891377355669/$USER/"
+}
+
+list_objects() {
+  local out list
+	out=$(aws s3 ls "$BUCKET")
+	list=$(echo "$out" | sed '1d')
+	echo "$list"
+	echo "*******************************************************"
+}
+
+upload_file() {
+  local file_path=$1
+
+	if [ -f "$file_path" ]
+	then
+	  aws s3 cp "$file_path" "$BUCKET"
+	  echo "$file_path uploaded to $BUCKET"
+	else
+	  echo "File does not exist/Not a regular file"
+	  exit 1
+	fi
+}
+
+#download_file() {
+#
+#}
+
+delete_file() {
+  local out
+  out=$(aws s3 rm "$BUCKET/$FILE")
+  echo "$out"
+  if [ $? -ne 0 ]
+  then
+    echo "Operation failed"
+  else
+    echo "$FILE was successfully deleted"
+  fi
+}
+
+
+main() {
+
+	read -r INPUT FILE
+	echo "$INPUT"
+	echo "$FILE"
+
+	if [ "$INPUT" = "list" ]
+	then
+		echo "Here is the list"
+		list_objects
+		show_instructions
+		main
+	elif [ "$INPUT" = "upload" ]
+	then
+	  if [ -z "$FILE" ]
+	  then
+	    echo "No file specified"
+	  else
+		  echo "Uploading $FILE"
+		  upload_file "$FILE"
+		fi
+	elif [ "$INPUT" = "download" ]
+	then
+		echo "Downloading $FILE"
+		download_file "$FILE"
+	elif [ "$INPUT" = "delete" ]
+	then
+		echo "Deleting $FILE"
+		delete_file "$FILE"
+	else
+		echo "Invalid option. Please try again."
+		echo ""
+		show_instructions
+		main
+	fi
+
+
+}
+
+show_banner
+show_instructions
+get_user
+main
