@@ -12,14 +12,6 @@ show_banner() {
 	echo "              Welcome to Cloud-Box utility              "
 }
 
-#show_usage() {
-#	echo "             Usage: cloud-box [option] [file]               "
-#	echo "Options: "
-#	echo "   -u,  --upload        Upload a file"
-#	echo "   -d,  --download      Download a file"
-#	echo "   -r,  --remove        Remove a file"
-#}
-
 show_instructions() {
 	echo "Operations:"
 	echo "    list               List all files in your space"
@@ -32,18 +24,17 @@ show_instructions() {
 get_user() {
   local arn
 	arn=$(aws sts get-caller-identity --query "Arn" --output text)
-	 if [ $? -ne 0 ]; then
+	if [ $? -ne 0 ]; then
 		echo "Failed to retrieve AWS user information."
 		exit 1
-    fi
+  fi
 	USER=$(echo "$arn" | awk -F'/' '{print $NF}')
 	BUCKET="s3://cloud-storage-891377355669/$USER/"
 }
 
 list_objects() {
-  local out list
-	out=$(aws s3 ls "$BUCKET")
-	list=$(echo "$out" | sed '1d')
+  local list
+	list=$(aws s3 ls "$BUCKET" | sed '1d')
 	echo "$list"
 	echo "*******************************************************"
 }
@@ -51,8 +42,7 @@ list_objects() {
 upload_file() {
   local file_path=$1
 
-	if [ -f "$file_path" ]
-	then
+	if [ -f "$file_path" ];then
 	  aws s3 cp "$file_path" "$BUCKET"
 	  echo "$file_path uploaded to $BUCKET"
 	else
@@ -66,12 +56,10 @@ upload_file() {
 
 delete_file() {
 
-  local out list flag=false
+  local list flag=false
   list=$(list_objects | sed '$d' | awk '{print $4}')
-  while IFS= read -r line
-  do
-    if [ "$line" = "$FILE" ]
-    then
+  while IFS= read -r line;do
+    if [ "$line" = "$FILE" ];then
       aws s3 rm "$BUCKET$FILE"
       echo "$FILE was successfully deleted"
       flag=true
@@ -89,38 +77,31 @@ main() {
   get_user
   show_banner
   while true; do
-    INPUT=''
-    FILE=''
+
+    INPUT=''; FILE=''
     show_instructions
     read -p "Enter: " -r INPUT FILE
 
-    if [ "$INPUT" = "list" ]
-    then
+    if [ "$INPUT" = "list" ];then
       echo "Files:"
       list_objects
-    elif [ "$INPUT" = "upload" ]
-    then
-      if [ -z "$FILE" ]
-      then
+    elif [ "$INPUT" = "upload" ];then
+      if [ -z "$FILE" ];then
         echo "No file specified"
       else
         echo "Uploading $FILE"
         upload_file "$FILE"
       fi
-    elif [ "$INPUT" = "download" ]
-    then
+    elif [ "$INPUT" = "download" ];then
       echo "Downloading $FILE"
       download_file "$FILE"
-    elif [ "$INPUT" = "delete" ]
-    then
+    elif [ "$INPUT" = "delete" ];then
       echo "Deleting $FILE"
       delete_file "$FILE"
-    elif [ "$INPUT" = "exit" ]
-    then
+    elif [ "$INPUT" = "exit" ];then
       exit 0
     else
-      echo "Invalid option. Please try again."
-      echo ""
+      echo -e "Invalid option. Please try again.\n"
     fi
   done
 
