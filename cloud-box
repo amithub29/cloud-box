@@ -30,7 +30,7 @@ get_user() {
 		exit 1
   fi
 	USER=$(echo "$arn" | awk -F'/' '{print $NF}')
-	BUCKET="s3://cloud-storage-891377355669/$USER/"
+	BUCKET="s3://$BUCKET_NAME/$USER/"
 }
 
 list_objects() {
@@ -73,6 +73,18 @@ delete_file() {
 
 
 main() {
+  if [ -z "$BUCKET_NAME" ];then
+    echo "BUCKET_NAME is not set. Please export correct bucket and try again"
+    exit 1
+  else
+    aws s3api head-bucket --bucket "$BUCKET_NAME" >/dev/null 2>&1
+    if [ $? -ne 0 ];then
+      echo "Incorrect BUCKET_NAME. Please export correct bucket"
+      exit 1
+    fi
+
+  fi
+
   get_user
   show_banner
   while true; do
