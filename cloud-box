@@ -39,40 +39,53 @@ list_objects() {
 	echo "$list"
 }
 
-upload_file() {
-  local file_path=$1
+check_file() {
 
-	if [ -f "$file_path" ];then
-	  aws s3 cp "$file_path" "$BUCKET" > /dev/null
-	  echo "$file_path was successfully uploaded"
-	else
-	  echo "File $file_path does not exist / Not a regular file"
-	fi
-}
-
-#download_file() {
-#
-#}
-
-delete_file() {
-
-  local list flag=false
+  local list
+  FLAG=false
   list=$(list_objects | awk '{print $4}')
-  while IFS= read -r line;do
+  while IFS= read -r line; do
     if [ "$line" = "$FILE" ];then
-      aws s3 rm "$BUCKET$FILE" >/dev/null
-      echo "$FILE was successfully deleted"
-      flag=true
+      FLAG=true
       break
     fi
   done < <(echo "$list")
-  if ! $flag;then
+}
+
+upload_file() {
+
+	if [ -f "$FILE" ];then
+	  aws s3 cp "$FILE" "$BUCKET" > /dev/null
+	  echo "$FILE was successfully uploaded"
+	else
+	  echo "File $FILE does not exist / Not a regular file"
+	fi
+}
+
+download_file() {
+
+  check_file
+  if $FLAG;then
+    aws s3 cp "$BUCKET$FILE" . >/dev/null
+    echo "$FILE successfully downloaded in current dir"
+  else
     echo "File $FILE not found"
   fi
 }
 
+delete_file() {
+
+  check_file
+  if $FLAG;then
+    aws s3 rm "$BUCKET$FILE" >/dev/null
+    echo "$FILE was successfully deleted"
+  else
+    echo "File $FILE not found"
+  fi
+}
 
 main() {
+
   if [ -z "$BUCKET_NAME" ];then
     echo "BUCKET_NAME is not set. Please export correct bucket and try again"
     exit 1
@@ -87,6 +100,7 @@ main() {
 
   get_user
   show_banner
+
   while true; do
 
     INPUT=''; FILE=''
@@ -101,14 +115,14 @@ main() {
         echo "No file specified"
       else
         echo "Uploading $FILE..."
-        upload_file "$FILE"
+        upload_file
       fi
     elif [ "$INPUT" = "download" ];then
       echo "Downloading $FILE..."
-      download_file "$FILE"
+      download_file
     elif [ "$INPUT" = "delete" ];then
       echo "Deleting $FILE..."
-      delete_file "$FILE"
+      delete_file
     elif [ "$INPUT" = "exit" ];then
       echo "Exiting"
       exit 0
@@ -117,7 +131,6 @@ main() {
     fi
     echo -e "_________________________________________________________\n"
   done
-
 }
 
 main
