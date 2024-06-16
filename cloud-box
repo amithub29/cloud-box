@@ -1,24 +1,24 @@
 #!/bin/bash
 
 show_banner() {
+  echo ""
 	echo "  _____   __                __        ___            "
 	echo " / ___/  / / ___  __ __ ___/ / ____  / _ ) ___  __ __"
 	echo "/ /__   / / / _ \/ // // _  / /___/ / _  |/ _ \ \ \ /"
 	echo "\___/  /_/  \___/\_,_/ \_,_/       /____/ \___//_\_\ "
 	echo "                                                     "
 	echo "                                                     "
-	echo "*******************************************************"
-	echo "                                                     "
+	echo "*********************************************************"
 	echo "              Welcome to Cloud-Box utility              "
-}
-
-show_instructions() {
-	echo "Operations:"
-	echo "    list               List all files in your space"
-	echo "    upload <file>      Upload a file to your space"
-	echo "    download <file>    Download a file from your space"
-	echo "    delete <file>      Delete a file from your space"
-	echo "    exit               Exit the program"
+	echo "*********************************************************"
+	echo ""
+	echo "You can perform the following operations:"
+	echo "    list               - List all files in your space"
+	echo "    upload <file>      - Upload a file to your space"
+	echo "    download <file>    - Download a file from your space"
+	echo "    delete <file>      - Delete a file from your space"
+	echo "    exit               - Exit the program"
+	echo ""
 }
 
 get_user() {
@@ -26,6 +26,7 @@ get_user() {
 	arn=$(aws sts get-caller-identity --query "Arn" --output text)
 	if [ $? -ne 0 ]; then
 		echo "Failed to retrieve AWS user information."
+		echo "Please ensure that your AWS CLI is properly configured for default profile and try again."
 		exit 1
   fi
 	USER=$(echo "$arn" | awk -F'/' '{print $NF}')
@@ -36,17 +37,16 @@ list_objects() {
   local list
 	list=$(aws s3 ls "$BUCKET" | sed '1d')
 	echo "$list"
-	echo "*******************************************************"
 }
 
 upload_file() {
   local file_path=$1
 
 	if [ -f "$file_path" ];then
-	  aws s3 cp "$file_path" "$BUCKET"
-	  echo "$file_path uploaded to $BUCKET"
+	  aws s3 cp "$file_path" "$BUCKET" > /dev/null
+	  echo "$file_path was successfully uploaded"
 	else
-	  echo "File does not exist/Not a regular file"
+	  echo "File $file_path does not exist / Not a regular file"
 	fi
 }
 
@@ -57,18 +57,17 @@ upload_file() {
 delete_file() {
 
   local list flag=false
-  list=$(list_objects | sed '$d' | awk '{print $4}')
+  list=$(list_objects | awk '{print $4}')
   while IFS= read -r line;do
     if [ "$line" = "$FILE" ];then
-      aws s3 rm "$BUCKET$FILE"
+      aws s3 rm "$BUCKET$FILE" >/dev/null
       echo "$FILE was successfully deleted"
       flag=true
       break
     fi
   done < <(echo "$list")
-
   if ! $flag;then
-    echo "File not found"
+    echo "File $FILE not found"
   fi
 }
 
@@ -79,30 +78,32 @@ main() {
   while true; do
 
     INPUT=''; FILE=''
-    show_instructions
+
     read -p "Enter: " -r INPUT FILE
 
     if [ "$INPUT" = "list" ];then
-      echo "Files:"
+      echo "Listing all files..."
       list_objects
     elif [ "$INPUT" = "upload" ];then
       if [ -z "$FILE" ];then
         echo "No file specified"
       else
-        echo "Uploading $FILE"
+        echo "Uploading $FILE..."
         upload_file "$FILE"
       fi
     elif [ "$INPUT" = "download" ];then
-      echo "Downloading $FILE"
+      echo "Downloading $FILE..."
       download_file "$FILE"
     elif [ "$INPUT" = "delete" ];then
-      echo "Deleting $FILE"
+      echo "Deleting $FILE..."
       delete_file "$FILE"
     elif [ "$INPUT" = "exit" ];then
+      echo "Exiting"
       exit 0
     else
-      echo -e "Invalid option. Please try again.\n"
+      echo "Invalid command. Please try again"
     fi
+    echo -e "_________________________________________________________\n"
   done
 
 }
