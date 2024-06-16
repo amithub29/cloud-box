@@ -34,9 +34,8 @@ get_user() {
 }
 
 list_objects() {
-  local list
-	list=$(aws s3 ls "$BUCKET" | sed '1d')
-	echo "$list"
+
+  aws s3 ls "$BUCKET"
 }
 
 check_file() {
