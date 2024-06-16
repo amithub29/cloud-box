@@ -57,7 +57,6 @@ upload_file() {
 	  echo "$file_path uploaded to $BUCKET"
 	else
 	  echo "File does not exist/Not a regular file"
-	  exit 1
 	fi
 }
 
@@ -69,7 +68,7 @@ delete_file() {
 
   local out list flag=false
   list=$(list_objects | sed '$d' | awk '{print $4}')
-  echo "$list" | while IFS= read -r line
+  while IFS= read -r line
   do
     if [ "$line" = "$FILE" ]
     then
@@ -78,7 +77,8 @@ delete_file() {
       flag=true
       break
     fi
-  done
+  done < <(echo "$list")
+
   if ! $flag;then
     echo "File not found"
   fi
@@ -92,9 +92,7 @@ main() {
     INPUT=''
     FILE=''
     show_instructions
-    read -r INPUT FILE
-    echo "$INPUT"
-    echo "$FILE"
+    read -p "Enter: " -r INPUT FILE
 
     if [ "$INPUT" = "list" ]
     then
